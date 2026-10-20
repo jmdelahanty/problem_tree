@@ -262,6 +262,13 @@ def turtle(con, out, base):
         local = str(local)
         return f"{kind}:{local}" if PN_LOCAL.fullmatch(local) else f"<{ns[kind]}{quote(local, safe='')}>"
 
+    known = {i for (i,) in con.execute("SELECT id FROM nodes")}
+
+    def nref(v):
+        """A reference to a node: its IRI when it names one, else the text as written, so a typo or a
+        foreign id never mints a node IRI (wikilinks are handled the same way through dst_node)."""
+        return iri("node", v) if v in known else lit(v)
+
     def term(scheme, v):
         """A controlled value as a concept in its scheme (vocab.ttl): status open -> pt:status-open."""
         return f"pt:{scheme}-{v}" if PN_LOCAL.fullmatch(str(v)) else lit(v)
@@ -288,8 +295,8 @@ def turtle(con, out, base):
                        " assignee, source, opened, closed, instrument, todo, revisit, rollup FROM nodes ORDER BY id"):
         pairs = [("a", cls.get(typ, "pt:Node")), ("dcterms:identifier", lit(i)), ("dcterms:title", title and lit(title)),
                  ("pt:status", status and term("status", status)), ("pt:resolution", res and term("resolution", res)),
-                 ("pt:rollup", roll and term("rollup", roll)), ("pt:parent", parent and iri("node", parent)),
-                 ("pt:discoveredFrom", disc and iri("node", disc)), ("pt:promotedTo", promo and iri("node", promo)),
+                 ("pt:rollup", roll and term("rollup", roll)), ("pt:parent", parent and nref(parent)),
+                 ("pt:discoveredFrom", disc and nref(disc)), ("pt:promotedTo", promo and nref(promo)),
                  ("pt:category", cat and lit(cat)), ("pt:assignee", who and lit(who)), ("pt:source", src and term("source", src)),
                  ("dcterms:created", opened and lit(opened)), ("pt:closed", closed and lit(closed)),
                  ("pt:instrument", instr and lit(instr)), ("pt:todo", todo and lit(todo)),
@@ -310,7 +317,7 @@ def turtle(con, out, base):
                 ("pt:" + (kind if PN_LOCAL.fullmatch(kind) else "note"), lit(r))
                 for kind, r in rows("SELECT kind, ref FROM fixes WHERE id = ? AND idx = ?", i, k)])))
         for rank, mid, prio, owner in rows("SELECT rank, id, priority, owner FROM members WHERE sprint = ? ORDER BY rank", i):
-            pairs.append(("pt:member", bnode([("a", "pt:Membership"), ("pt:node", iri("node", mid)), ("pt:rank", lit(rank)),
+            pairs.append(("pt:member", bnode([("a", "pt:Membership"), ("pt:node", nref(mid)), ("pt:rank", lit(rank)),
                                               ("pt:priority", prio and lit(prio)), ("pt:owner", owner and lit(owner))])))
         pairs += [("pt:session", iri("session", r)) for (r,) in rows("SELECT ref FROM sessions WHERE id = ?", i)]
         block(iri("node", i), pairs)
@@ -323,7 +330,7 @@ def turtle(con, out, base):
         pairs = [("a", "pt:StoryPoint"), ("dcterms:title", title and lit(title)), ("dcterms:date", date and lit(date)),
                  ("pt:kind", kind and term("kind", kind)), ("pt:answers", answers and iri("story", answers)),
                  ("dcterms:description", summary and lit(summary))]
-        pairs += [("pt:about", iri("node", n)) for (n,) in rows("SELECT id FROM story_nodes WHERE slug = ?", slug)]
+        pairs += [("pt:about", nref(n)) for (n,) in rows("SELECT id FROM story_nodes WHERE slug = ?", slug)]
         pairs += [("pt:figure", bnode([("a", "pt:Figure"), ("pt:role", role and term("role", role)), ("pt:artifact", lit(p)),
                                        ("pt:caption", cap and lit(cap))]))
                   for role, p, cap in rows("SELECT role, path, caption FROM story_figures WHERE slug = ?", slug)]
@@ -331,7 +338,7 @@ def turtle(con, out, base):
 
     for node, pnode, psession, written, path in rows("SELECT * FROM briefs ORDER BY node"):
         block(f"<{ns['node']}{quote(node, safe='')}/brief>", [
-            ("a", "pt:Brief"), ("pt:briefFor", iri("node", node)), ("pt:parentNode", pnode and iri("node", pnode)),
+            ("a", "pt:Brief"), ("pt:briefFor", nref(node)), ("pt:parentNode", pnode and nref(pnode)),
             ("pt:parentSession", psession and iri("session", psession)), ("dcterms:created", written and lit(written)),
             ("pt:artifact", lit(path))])
 

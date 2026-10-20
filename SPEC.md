@@ -366,3 +366,6 @@ source, story kind, figure role) are SKOS concepts named `pt:<scheme>-<value>`, 
 and `soft` as a rollup stay distinct. Load an export together with `vocab.ttl` to query through the
 standard terms. Evidence, fix and membership entries are blank nodes, as they have no identity of
 their own in the notes.
+A reference that names no node or alias (an unresolved wikilink, or a typo in `parent:`, `members:`,
+a story point's `nodes:` or a brief's `node:`) is written as a plain string, never as a node IRI, so
+ids from other note systems cannot pose as nodes.
