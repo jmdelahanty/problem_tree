@@ -6,7 +6,7 @@ schema and its reasoning. This file holds what you need to run the tool and to w
 ## Commands
 
 ```
-python validate.py DIR [--tree]       invariants and a tree print with rollups; exit 1 on errors (PyYAML only)
+python validate.py DIR [--tree] [--config PATH]   invariants and a tree print with rollups; exit 1 on errors (PyYAML only)
 python new.py DIR problem|task|observation --parent ID --title "…" [--alias LEGACY-ID] [--discovered-from ID] [--assignee WHO]
 python new.py DIR problem --root --prefix xyz --title "…"
 python new.py EXPDIR experiment --id NAME --title "…" [--kind ...] [--previous NAME]
@@ -38,6 +38,8 @@ config inside its own vault and set the variable.
 | `repos`, `default_repo` | repo name to web URL, for `pr:`, `commit:` and `repo:` entries |
 | `categories` | optional `[{name, description, color}]` used to color nodes; a node's `category:` may be any string |
 | `path_map` | rewrites copied paths and resume commands when the vault is read through a mount |
+| `private_globs` | vault paths the cockpit never serves, renders or indexes (a folder pattern covers its contents); tool folders such as `.obsidian` and `.git` are always refused |
+| `assignees` | names a node's `assignee:` may hold besides `agent`, `pi:<session>`, `claude:<session>`; unset accepts any name. `validate.py` reads it from the same config |
 | `tree_ttl`, `note_index_ttl` | seconds before a cache refreshes |
 | `experiment_globs`, `run_media`, `figure_tiers`, `stage_order`, `services` | optional run pages, figure organization and TensorBoard launching (SPEC §14–17) |
 

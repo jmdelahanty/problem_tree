@@ -76,6 +76,11 @@ class Config:
         self.tree_ttl = float(c.get("tree_ttl", 2))          # seconds; collapses re-reads within a request
         self.note_index_ttl = float(c.get("note_index_ttl", 30))
         self.note_index_skip = set(c.get("note_index_skip", ["media"]))
+        # Vault paths the cockpit never serves, renders or indexes: fnmatch patterns on the vault-relative path,
+        # case-insensitive; a pattern that matches a folder covers everything under it (e.g. "_secrets").
+        self.private_globs = [str(g).lower() for g in c.get("private_globs", [])]
+        # People a node may be assigned to besides agent | pi:<session> | claude:<session>; unset accepts any name.
+        self.assignees = [str(a) for a in c["assignees"]] if c.get("assignees") else None
         self.daily_dir = c.get("daily_dir", "01-Daily")   # <year>/<month>/<date>-<weekday>.md, closeout's layout
 
         s = c.get("services") or {}
@@ -84,6 +89,15 @@ class Config:
         self.repo_roots = s.get("repo_roots", {})
         self.tensorboard = s.get("tensorboard", "tensorboard")
         self.observatory = s.get("observatory", {})
+
+    def private(self, rel):
+        """True for a vault-relative path the cockpit must not expose: inside a tool folder (SKIP_DIRS: .obsidian,
+        .git, …, where plugins keep tokens) or matched, itself or through a parent folder, by `private_globs`."""
+        parts = pathlib.PurePath(rel).parts
+        if any(part in SKIP_DIRS for part in parts):
+            return True
+        prefixes = ["/".join(parts[:k]).lower() for k in range(1, len(parts) + 1)]
+        return any(fnmatch.fnmatchcase(p, g) for p in prefixes for g in self.private_globs)
 
     def remote(self, p):
         s = str(p)
@@ -171,7 +185,7 @@ class Trees:
 
     def _build(self, prefix, d):
         nodes, load_errors = load(d)
-        E, W = check(nodes)
+        E, W = check(nodes, self.cfg.assignees)
         byid = {n["id"]: n for n in nodes}
         children = defaultdict(list)
         for n in nodes:
@@ -697,7 +711,7 @@ class NoteIndex:
                 continue
             for p in root.rglob("*.md"):
                 rel = p.relative_to(self.cfg.vault)
-                if any(part in skip for part in rel.parts):
+                if any(part in skip for part in rel.parts) or self.cfg.private(rel):
                     continue
                 paths.add(str(rel))
                 by_stem[p.stem.lower()].append(rel)
@@ -725,7 +739,7 @@ class NoteIndex:
         hits = self.by_stem.get(pathlib.Path(t).stem.lower(), [])
         if hits:
             return sorted(hits, key=lambda r: len(str(r)))[0]
-        if (self.cfg.vault / t).exists():  # non-md attachment given by path
+        if (self.cfg.vault / t).exists() and not self.cfg.private(t):  # non-md attachment given by path
             return pathlib.Path(t)
         return None
 
@@ -1473,7 +1487,7 @@ def build_app(cfg):
     @app.get("/api/note")
     def api_note(name: str):
         rel = notes.resolve(name)
-        if rel is None or rel.suffix.lower() != ".md":
+        if rel is None or rel.suffix.lower() != ".md" or cfg.private(rel):
             raise HTTPException(404, f"no note {name}")
         text = (cfg.vault / rel).read_text(encoding="utf-8", errors="replace")
         fm, body = {}, text
@@ -1490,7 +1504,7 @@ def build_app(cfg):
     @app.get("/file/{path:path}")
     def file(path: str):
         target = (cfg.vault / path).resolve()
-        if cfg.vault not in target.parents or not target.is_file():
+        if cfg.vault not in target.parents or not target.is_file() or cfg.private(path) or cfg.private(target.relative_to(cfg.vault)):
             raise HTTPException(404, path)
         return FileResponse(target)
 

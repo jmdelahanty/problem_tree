@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """Validate a problem tree and print it.
 
-usage: validate.py DIR [--tree]
+usage: validate.py DIR [--tree] [--config PATH]
 
 DIR holds one markdown file per node (<id>.md) with the frontmatter described in
 SPEC.md §5–6.
-Exit 1 on any error. Warnings are reported, never fixed.
+Exit 1 on any error. Warnings are reported, never fixed. The only setting read from the cockpit's
+config (--config, else PROBLEM_TREE_CONFIG, else config.yaml beside this file) is `assignees`.
 """
 import argparse
+import os
 import pathlib
 import re
 import sys
@@ -26,7 +28,8 @@ UNRESOLVED = {"open", "fix-proposed", "fix-landed"}
 PAST_OPEN = {"fix-proposed", "fix-landed", "verified"}
 # Tasks closed before this date predate the evidence standard and are not held to it.
 STANDARD_SINCE = "2026-09-24"
-ASSIGNEE = re.compile(r"justin|agent|(pi|claude):\S+")
+HERE = pathlib.Path(__file__).resolve().parent
+AGENT_ASSIGNEE = re.compile(r"agent|(pi|claude):\S+")
 PRIORITY = ("P1", "P2", "P3")
 CHECKBOX = re.compile(r"^\s*[-*] \[[ xX~]\]|#task\b")
 
@@ -67,7 +70,18 @@ def _artifacts(node):
         yield "artifact", node["artifact"]
 
 
-def check(nodes):
+def config_assignees(path=None):
+    """The `assignees` list from the config, or None when no config or no list is set (any name is then accepted)."""
+    p = pathlib.Path(path or os.environ.get("PROBLEM_TREE_CONFIG") or HERE / "config.yaml").expanduser()
+    if not p.is_file():
+        return None
+    names = (yaml.safe_load(p.read_text()) or {}).get("assignees")
+    return [str(a) for a in names] if names else None
+
+
+def check(nodes, assignees=None):
+    """Errors and warnings for a tree. `assignees` lists the people a node may be assigned to besides
+    agent | pi:<session> | claude:<session>; None accepts any name."""
     E, W = [], []
     byid = {}
     for n in nodes:
@@ -126,8 +140,8 @@ def check(nodes):
         elif s == "done" and not n.get("after") and not pre_standard(n):
             E.append((i, "done needs after evidence (commit, test, job or artifact)"))
         who = n.get("assignee")
-        if who is not None and not ASSIGNEE.fullmatch(str(who)):
-            W.append((i, f"assignee {who!r} not justin|agent|pi:<session>|claude:<session>"))
+        if who is not None and assignees is not None and not (str(who) in assignees or AGENT_ASSIGNEE.fullmatch(str(who))):
+            W.append((i, f"assignee {who!r} not {'|'.join(assignees)}|agent|pi:<session>|claude:<session>"))
     _check_members(nodes, byid, aliases, E, W)
     _check_rollup(byid, children, W)
     return E, W
@@ -325,9 +339,10 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("dir", help="folder of <id>.md nodes")
     ap.add_argument("--tree", action="store_true", help="print the tree with rollups")
+    ap.add_argument("--config", help="cockpit config holding `assignees` (default: PROBLEM_TREE_CONFIG, then config.yaml here)")
     args = ap.parse_args()
     nodes, errors = load(args.dir)
-    E, W = check(nodes)
+    E, W = check(nodes, config_assignees(args.config))
     E = errors + E
     for rel, hits in stray_checkboxes(args.dir):
         W.append((rel, f"{len(hits)} checkbox/#task line(s) outside the tree (lines {', '.join(map(str, hits[:5]))})"))

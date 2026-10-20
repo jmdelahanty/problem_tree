@@ -124,7 +124,7 @@ todo: ""                           # required when resolution: soft
 
 ```yaml
 status: open | done | dropped
-assignee: null                     # justin | agent | pi:<session> | claude:<session> (all node types)
+assignee: null                     # a name from the config's `assignees` | agent | pi:<session> | claude:<session> (all node types)
 before: []                         # optional: why the task is worth doing; same entry shape as a problem's
 after: []                          # required for done (from 2026-09-24): commit, test, job or artifact
 artifact: null                     # legacy single relative path; counts as after-evidence in the cockpit
@@ -166,7 +166,8 @@ Warnings:
 - a leaf `problem` with empty `before` (a candidate, not a row)
 - `verified` without `resolution`; `todo` set but resolution not `soft`
 - a `verified` node with an unresolved descendant
-- `assignee` outside justin | agent | pi:<session> | claude:<session>
+- `assignee` outside the config's `assignees` | agent | pi:<session> | claude:<session> (any name passes when no
+  `assignees` list is configured)
 - a sprint without exactly one `sprint-*` tag; a member without its sprint's tag; a `sprint-*` tag on a
   node its sprint does not list; a member priority outside P1 | P2 | P3
 - a checkbox or `#task` line in any note beside `problems/` (the tree is the only task list)
@@ -222,6 +223,12 @@ as URLs, rendered body, children, `discovered_from` backlink; (3) sessions strip
 (§8); (4) copy-figure and copy-embed (relative-path markdown) buttons; (5) ledger table
 (replaces the Dataview query); (6) candidates inbox parsed from the ledger note, with
 "promote" — the only write, calls `new.py`.
+
+Private paths: the cockpit serves any file under the vault (`/file`, `/api/note`, wikilink embeds), so it
+refuses tool folders (`.obsidian`, `.git`, … — plugins keep tokens there) and whatever the config's
+`private_globs` matches (case-insensitive fnmatch on the vault-relative path; a pattern that matches a
+folder covers everything under it, e.g. `_secrets`). Those paths are also left out of the wikilink index.
+It binds 127.0.0.1 by default; keep it there and reach it through a tunnel.
 
 ## 11. Agent rules
 
