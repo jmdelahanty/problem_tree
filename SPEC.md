@@ -339,3 +339,30 @@ briefs whose `parent_node` is the sprint.
 Cockpit: a sprint's page lists its members in rank order (status dot, priority, id, title, owner; the node a
 member lives under appears on hover), above its children. Each member's page carries a ⚑ pill per sprint that
 lists it.
+
+## 20. Index and knowledge graph (2026-10-19)
+
+`index.py DIR` reads a tree with `validate.py`'s `load()` and writes a SQLite database, by default
+`~/.cache/problem-tree/<root id>.db`. The Markdown stays the source of truth: the database is rebuilt
+from scratch on every run, never edited, never committed, and may be deleted at any time. Each machine
+builds its own from its own checkout of the notes, so nothing binary passes through git.
+
+Tables: `nodes` (the frontmatter fields, the body, and the derived `rollup` label on interior nodes),
+`aliases`, `tags`, `edges` (`parent`, `discovered_from`, `promoted_to`, `member`, `wikilink`; aliases
+resolved, `dst_node` false for a wikilink to a note that is not a node), `members`, `evidence` (paths
+relative to the project folder, with `present`), `fixes`, `sessions` (the `sessions:` field only, not the
+cockpit's transcript scan), `stories`, `story_nodes`, `story_figures` (§18), `briefs` (`briefs/` beside
+`problems/`), and `nodes_fts` for full-text search where SQLite has FTS5. Saved queries run with
+`-q NAME [ARG]`; `index.py -h` lists them.
+
+`--ttl PATH` also writes the tree as RDF Turtle, in the vocabulary `vocab.ttl` defines
+(`urn:problem-tree:vocab#`). Node, story and session IRIs are `<base>node/<id>`, `<base>story/<slug>`,
+`<base>session/<ref>`, with `--base` defaulting to `urn:problem-tree:`; set it to an http base if the
+graph is to be merged with others. Titles, dates (`xsd:date`), ids and tags use Dublin Core directly;
+tree and provenance edges use `pt:` properties that `vocab.ttl` declares as subproperties of Dublin
+Core and PROV-O terms (`pt:parent` ⊑ `dcterms:isPartOf`, `pt:discoveredFrom` ⊑ `prov:wasInfluencedBy`,
+…), and node types as subclasses of `prov:Entity`. Controlled values (status, resolution, rollup,
+source, story kind, figure role) are SKOS concepts named `pt:<scheme>-<value>`, so `open` as a status
+and `soft` as a rollup stay distinct. Load an export together with `vocab.ttl` to query through the
+standard terms. Evidence, fix and membership entries are blank nodes, as they have no identity of
+their own in the notes.

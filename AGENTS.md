@@ -7,6 +7,7 @@ schema and its reasoning. This file holds what you need to run the tool and to w
 
 ```
 python validate.py DIR [--tree]       invariants and a tree print with rollups; exit 1 on errors (PyYAML only)
+python index.py DIR [--ttl FILE] [-q NAME [ARG]]   rebuild the SQLite index (and RDF Turtle) from the notes; saved queries (SPEC §20)
 python new.py DIR problem|task|observation --parent ID --title "…" [--alias LEGACY-ID] [--discovered-from ID] [--assignee WHO]
 python new.py DIR problem --root --prefix xyz --title "…"
 python new.py EXPDIR experiment --id NAME --title "…" [--kind ...] [--previous NAME]

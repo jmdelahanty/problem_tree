@@ -94,6 +94,7 @@ root with `python new.py <vault>/.../problems problem --root --prefix xyz --titl
 | `SPEC.md` | the schema, invariants, and reasoning |
 | `AGENTS.md` | commands, configuration, and rules for agents using or changing the tool |
 | `validate.py`, `new.py` | check the tree; create nodes |
+| `index.py`, `vocab.ttl` | a SQLite index with saved queries, and an RDF export with its vocabulary, both rebuilt from the notes |
 | `serve.py`, `webui/` | the cockpit (FastAPI and a hand-written SVG front end) |
 | `templates/` | one template per node type |
 | `skills/` | the agent skills |

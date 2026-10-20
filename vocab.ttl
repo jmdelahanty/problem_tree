@@ -1,0 +1,125 @@
+# The problem-tree vocabulary (SPEC §20): the terms index.py --ttl writes, mapped onto Dublin Core,
+# PROV-O and SKOS where one fits. Load it with an export to query through the standard terms
+# (with RDFS inference, pt:parent answers dcterms:isPartOf, a pt:Problem is a prov:Entity, …).
+@prefix pt: <urn:problem-tree:vocab#> .
+@prefix dcterms: <http://purl.org/dc/terms/> .
+@prefix prov: <http://www.w3.org/ns/prov#> .
+@prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+# ---------------------------------------------------------------- classes
+pt:Node a rdfs:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:label "node" ; rdfs:comment "One note in a problem tree, problems/<id>.md (SPEC §4)." .
+pt:Problem a rdfs:Class ; rdfs:subClassOf pt:Node ;
+    rdfs:comment "Something wrong that a measurement shows, fixed by a change later work inherits." .
+pt:Task a rdfs:Class ; rdfs:subClassOf pt:Node ;
+    rdfs:comment "Everything else met on the way: bugs, paths, plots, refactors." .
+pt:Observation a rdfs:Class ; rdfs:subClassOf pt:Node ;
+    rdfs:comment "An issue seen and evidenced, parked on purpose; never counted as open work." .
+pt:Evidence a rdfs:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:comment "One before: or after: entry: a figure or file, with the commit, job or data that made it." .
+pt:Fix a rdfs:Class ; rdfs:comment "One fix: entry: a PR, commit, config change or note." .
+pt:Membership a rdfs:Class ; rdfs:comment "A sprint's members: entry, with rank, priority and owner (SPEC §19)." .
+pt:Session a rdfs:Class ; rdfs:subClassOf prov:Activity ;
+    rdfs:comment "An agent chat attached to a node through sessions: (SPEC §8)." .
+pt:StoryPoint a rdfs:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:comment "A milestone in the project's storyline (SPEC §18)." .
+pt:Figure a rdfs:Class ; rdfs:comment "A story point's figure." .
+pt:Brief a rdfs:Class ; rdfs:subClassOf prov:Entity ;
+    rdfs:comment "A hand-off prompt for a child node, briefs/<id>.md, written by the brief skill." .
+
+# ---------------------------------------------------------------- tree structure
+pt:parent a rdf:Property ; rdfs:subPropertyOf dcterms:isPartOf ; rdfs:domain pt:Node ; rdfs:range pt:Node ;
+    rdfs:comment "The node above this one; absent only on the root." .
+pt:discoveredFrom a rdf:Property ; rdfs:subPropertyOf prov:wasInfluencedBy ; rdfs:domain pt:Node ; rdfs:range pt:Node ;
+    rdfs:comment "The node whose work surfaced this one." .
+pt:promotedTo a rdf:Property ; rdfs:subPropertyOf dcterms:isReplacedBy ; rdfs:domain pt:Observation ; rdfs:range pt:Node ;
+    rdfs:comment "The problem or task that took a promoted observation on." .
+pt:member a rdf:Property ; rdfs:domain pt:Node ; rdfs:range pt:Membership .
+pt:node a rdf:Property ; rdfs:domain pt:Membership ; rdfs:range pt:Node .
+pt:rank a rdf:Property ; rdfs:range xsd:integer .
+pt:priority a rdf:Property .
+pt:owner a rdf:Property .
+pt:alias a rdf:Property ; rdfs:subPropertyOf dcterms:identifier ; rdfs:comment "A previous id." .
+
+# ---------------------------------------------------------------- state
+pt:status a rdf:Property ; rdfs:range skos:Concept .
+pt:resolution a rdf:Property ; rdfs:range skos:Concept .
+pt:rollup a rdf:Property ; rdfs:range skos:Concept ;
+    rdfs:comment "Derived by index.py from the descendants (validate.py's rollup); interior nodes only." .
+pt:source a rdf:Property ; rdfs:range skos:Concept .
+pt:category a rdf:Property .
+pt:assignee a rdf:Property .
+pt:closed a rdf:Property ; rdfs:subPropertyOf dcterms:date ; rdfs:range xsd:date .
+pt:instrument a rdf:Property ; rdfs:comment "The measurement both before and after evidence use." .
+pt:todo a rdf:Property ; rdfs:comment "What is left on a soft resolution." .
+pt:revisit a rdf:Property ; rdfs:comment "The condition that would make a parked observation worth the time." .
+
+# ---------------------------------------------------------------- evidence and provenance
+pt:before a rdf:Property ; rdfs:range pt:Evidence ; rdfs:comment "Evidence the problem exists." .
+pt:after a rdf:Property ; rdfs:range pt:Evidence ; rdfs:comment "Evidence it was addressed." .
+pt:artifact a rdf:Property ; rdfs:comment "A file path, relative to the project folder." .
+pt:data a rdf:Property ; rdfs:comment "A data file, relative to its repo." .
+pt:repo a rdf:Property .
+pt:commit a rdf:Property .
+pt:branch a rdf:Property .
+pt:job a rdf:Property ; rdfs:comment "A cluster job id." .
+pt:note a rdf:Property .
+pt:fix a rdf:Property ; rdfs:range pt:Fix .
+pt:pr a rdf:Property ; rdfs:comment "repo#number" .
+pt:config a rdf:Property .
+pt:session a rdf:Property ; rdfs:domain pt:Node ; rdfs:range pt:Session .
+pt:harness a rdf:Property ; rdfs:comment "pi, claude, …" .
+pt:ref a rdf:Property ; rdfs:comment "The harness's session path or id." .
+
+# ---------------------------------------------------------------- storyline and briefs
+pt:about a rdf:Property ; rdfs:subPropertyOf dcterms:references ; rdfs:domain pt:StoryPoint ; rdfs:range pt:Node .
+pt:answers a rdf:Property ; rdfs:domain pt:StoryPoint ; rdfs:range pt:StoryPoint ;
+    rdfs:comment "A later story point that resolves this earlier one." .
+pt:kind a rdf:Property ; rdfs:range skos:Concept .
+pt:figure a rdf:Property ; rdfs:range pt:Figure .
+pt:role a rdf:Property ; rdfs:range skos:Concept .
+pt:caption a rdf:Property .
+pt:briefFor a rdf:Property ; rdfs:domain pt:Brief ; rdfs:range pt:Node .
+pt:parentNode a rdf:Property ; rdfs:subPropertyOf prov:wasDerivedFrom ; rdfs:domain pt:Brief ; rdfs:range pt:Node .
+pt:parentSession a rdf:Property ; rdfs:subPropertyOf prov:wasGeneratedBy ; rdfs:domain pt:Brief ; rdfs:range pt:Session .
+
+# ---------------------------------------------------------------- controlled values
+pt:statuses a skos:ConceptScheme ; skos:prefLabel "node status" .
+pt:status-open a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "open" .
+pt:status-fix-proposed a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "fix-proposed" .
+pt:status-fix-landed a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "fix-landed" .
+pt:status-verified a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "verified" .
+pt:status-closed a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "closed" .
+pt:status-done a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "done" .
+pt:status-dropped a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "dropped" .
+pt:status-noted a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "noted" .
+pt:status-promoted a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "promoted" .
+pt:status-dismissed a skos:Concept ; skos:inScheme pt:statuses ; skos:prefLabel "dismissed" .
+
+pt:resolutions a skos:ConceptScheme ; skos:prefLabel "resolution" .
+pt:resolution-soft a skos:Concept ; skos:inScheme pt:resolutions ; skos:definition "ok for now, with a todo left" .
+pt:resolution-hard a skos:Concept ; skos:inScheme pt:resolutions ; skos:definition "verified, nothing left" .
+
+pt:rollups a skos:ConceptScheme ; skos:prefLabel "rollup" .
+pt:rollup-open a skos:Concept ; skos:inScheme pt:rollups ; skos:definition "an unresolved leaf problem below" .
+pt:rollup-soft a skos:Concept ; skos:inScheme pt:rollups ; skos:definition "open tasks or soft problems below" .
+pt:rollup-collapse a skos:Concept ; skos:inScheme pt:rollups ; skos:definition "an interior problem below awaits the user's collapse" .
+pt:rollup-clear a skos:Concept ; skos:inScheme pt:rollups ; skos:definition "nothing left below" .
+
+pt:sources a skos:ConceptScheme ; skos:prefLabel "source" .
+pt:source-agent a skos:Concept ; skos:inScheme pt:sources .
+pt:source-human a skos:Concept ; skos:inScheme pt:sources .
+
+pt:kinds a skos:ConceptScheme ; skos:prefLabel "story point kind" .
+pt:kind-decision a skos:Concept ; skos:inScheme pt:kinds .
+pt:kind-problem-exposed a skos:Concept ; skos:inScheme pt:kinds .
+pt:kind-fix a skos:Concept ; skos:inScheme pt:kinds .
+pt:kind-overview a skos:Concept ; skos:inScheme pt:kinds .
+
+pt:roles a skos:ConceptScheme ; skos:prefLabel "figure role" .
+pt:role-problem a skos:Concept ; skos:inScheme pt:roles .
+pt:role-solution a skos:Concept ; skos:inScheme pt:roles .
+pt:role-overview a skos:Concept ; skos:inScheme pt:roles .
