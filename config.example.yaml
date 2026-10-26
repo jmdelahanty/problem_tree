@@ -21,6 +21,12 @@ path_map: {}
 tree_ttl: 2            # s; re-read notes after this
 note_index_ttl: 30     # s; rebuild the stem -> path index after this
 note_index_skip: [media]
+# Vault paths the cockpit never serves, renders or indexes: case-insensitive fnmatch on the vault-relative path;
+# a pattern that matches a folder covers everything under it. Tool folders (.obsidian, .git, ...) are always refused.
+private_globs: []        # e.g. [_secrets, "*.key"]
+# People a node may be assigned to; validate.py and the cockpit warn on other names. agent, pi:<session> and
+# claude:<session> are always accepted. Leave unset to accept any name.
+# assignees: [your-name]
 # Experiment notes (SPEC.md §14): folders holding type: experiment notes; figures per arm at run_media.
 experiment_globs: ["02-Projects/*/*/experiments"]
 run_media: "../media/single/{run_id}"
